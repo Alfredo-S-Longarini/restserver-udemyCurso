@@ -1,38 +1,65 @@
 import { response } from "express"; //Para que funcione res. y sea mas comodo.
+import Usuario from '../models/usuario.js'
 
-export const userGet = (req, res = response) => { 
+import bcryptjs from "bcryptjs"
 
-    const {} = req.query
+export const userGet = async(req, res = response) => { 
+
+    const {limite=5, desde=0} = req.query
+    const query = {estado: true}
+
+    const [total, usuarios] = await Promise.all([
+        await Usuario.countDocuments(query),
+        Usuario.find(query)
+            .skip(Number(desde))
+            .limit(Number(limite))
+    ])
+
+    res.json({total, usuarios});
+}
+
+export const userPut = async(req, res) => { 
+
+    const {id}= req.params
+    const {_id, password, google, correo, ...resto} = req.body
+
+    if(password){
+
+        const salt = bcryptjs.genSaltSync();
+        resto.password = bcryptjs.hashSync(password, salt);
+
+    }
+
+    const usuario = await Usuario.findByIdAndUpdate(id, resto)
+
+    res.json(usuario);
+}
+
+export const userPost = async(req, res = response) => { 
+
+    const {nombre, correo, password, rol} = req.body;
+    const usuario = new Usuario({nombre, correo, password, rol});
+
+    //Encriptar la contraseña.
+    const salt = bcryptjs.genSaltSync();
+    usuario.password = bcryptjs.hashSync(password, salt);
+
+    //Guardar en base de datos.
+    await usuario.save();
 
     res.json({
-        msg:'get API - controller'
+        usuario
     });
 }
 
-export const userPut = (req, res) => { 
 
-    const id = req.params.id
+export const userDelete = async(req, res) => { 
 
-    res.json({
-        msg:'put API - controller',
-        id
-    });
-}
+    const {id} = req.params
 
-export const userPost = (req, res) => { 
+    const usuario = await Usuario.findByIdAndUpdate(id, {estado:false})
 
-    const {} = req.body;
-
-    res.json({
-        msg:'post API - controller'
-    });
-}
-
-
-export const userDelete = (req, res) => { 
-    res.json({
-        msg:'delete API - controller'
-    });
+    res.json(usuario);
 }
 
 export const userPatch = (req, res) => { 
